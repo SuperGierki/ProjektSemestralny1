@@ -44,6 +44,36 @@ def main():
     title_font = pygame.font.SysFont("arial", 72)
     button_font = pygame.font.SysFont("arial", 36)
 
+    base_dir = os.path.dirname(__file__)
+    bg_candidates = [
+        os.path.join(base_dir, "assets", "background.png"),
+        os.path.join(base_dir, "background.png"),
+    ]
+    background = None
+    for path in bg_candidates:
+        if not os.path.isfile(path):
+            print(f"Background not found at: {path}")
+            continue
+        try:
+            img = pygame.image.load(path)
+            background = pygame.transform.smoothscale(img.convert_alpha(), (WIDTH, HEIGHT))
+            print(f"Loaded background (pygame): {path}")
+            break
+        except Exception as e:
+            print(f"pygame failed to load '{path}': {e}")
+            try:
+                from PIL import Image
+                pil = Image.open(path).convert("RGBA")
+                data = pil.tobytes()
+                surf = pygame.image.frombuffer(data, pil.size, "RGBA")
+                background = pygame.transform.smoothscale(surf.convert_alpha(), (WIDTH, HEIGHT))
+                print(f"Loaded background via Pillow: {path}")
+                break
+            except Exception as e2:
+                print(f"Pillow fallback also failed for '{path}': {e2}")
+                background = None
+                continue
+
     # Języki
     LANG_PL: dict[str] = {
         "title": "Giereczka o wężu",
@@ -177,8 +207,11 @@ def main():
                         current_screen = "settings"
 
         # DRAW
-        screen.fill(BG_COLOR)
-
+        if background:
+            screen.blit(background, (0, 0))
+        else:
+            screen.fill(BG_COLOR)
+        
         if current_screen == "main":
             title = title_font.render(current_lang["title"], True, (240, 240, 240))
             screen.blit(title, ((WIDTH - title.get_width()) // 2, HEIGHT // 4))
