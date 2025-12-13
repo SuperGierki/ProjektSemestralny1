@@ -83,7 +83,7 @@ def main():
         "settings_title": "Ustawienia",
         "quality": "Jakość",
         "language": "Język",
-        "exit": "Wyjście",
+        "exit": "Powrót",
         "quality_title": "Jakość",
         "low": "Niska",
         "high": "Wysoka",
