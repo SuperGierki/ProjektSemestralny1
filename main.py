@@ -1,6 +1,117 @@
 import os
 import sys
 import pygame
+import random
+
+class SnakeGame:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.tile_size = 30
+        self.grid_width = width // self.tile_size
+        self.grid_height = height // self.tile_size
+        
+        self.snake = [(self.grid_width // 2, self.grid_height // 2)]
+        self.direction = (1, 0)
+        self.next_direction = (1, 0)
+        self.obstacles = self.create_obstacles()
+        self.food = self.spawn_food()
+        self.score = 0
+        self.move_counter = 0
+        self.move_interval = 5
+        
+    def create_obstacles(self):
+        obstacles = []
+        for x in range(5, 15):
+            obstacles.append((x, 10))
+        for y in range(15, 25):
+            obstacles.append((20, y))
+        for x in range(25, 35):
+            obstacles.append((x, 20))
+        return obstacles
+    
+    def spawn_food(self):
+        while True:
+            x = random.randint(0, self.grid_width - 1)
+            y = random.randint(0, self.grid_height - 1)
+            if (x, y) not in self.snake and (x, y) not in self.obstacles:
+                return (x, y)
+    
+    def handle_input(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP and self.direction[1] == 0:
+                self.next_direction = (0, -1)
+            elif event.key == pygame.K_DOWN and self.direction[1] == 0:
+                self.next_direction = (0, 1)
+            elif event.key == pygame.K_LEFT and self.direction[0] == 0:
+                self.next_direction = (-1, 0)
+            elif event.key == pygame.K_RIGHT and self.direction[0] == 0:
+                self.next_direction = (1, 0)
+    
+    def update(self):
+        self.move_counter += 1
+        if self.move_counter < self.move_interval:
+            return False
+        
+        self.move_counter = 0
+        self.direction = self.next_direction
+        
+        head_x, head_y = self.snake[0]
+        new_head = (head_x + self.direction[0], head_y + self.direction[1])
+        
+        if (new_head[0] < 0 or new_head[0] >= self.grid_width or
+            new_head[1] < 0 or new_head[1] >= self.grid_height):
+            return True  # Game over
+        
+        if new_head in self.snake:
+            return True  # Game over
+        
+        if new_head in self.obstacles:
+            return True  # Game over
+        
+        self.snake.insert(0, new_head)
+        
+        if new_head == self.food:
+            self.score += 10
+            self.food = self.spawn_food()
+        else:
+            self.snake.pop()
+        
+        return False
+    
+    def draw(self, surface):
+        surface.fill((20, 20, 40))
+        
+        grid_color = (40, 40, 60)
+        for x in range(0, self.width, self.tile_size):
+            pygame.draw.line(surface, grid_color, (x, 0), (x, self.height), 1)
+        for y in range(0, self.height, self.tile_size):
+            pygame.draw.line(surface, grid_color, (0, y), (self.width, y), 1)
+        
+        obstacle_color = (100, 100, 150)
+        for obs in self.obstacles:
+            pygame.draw.rect(surface, obstacle_color,
+                           (obs[0] * self.tile_size + 1, obs[1] * self.tile_size + 1,
+                            self.tile_size - 2, self.tile_size - 2))
+        
+        food_color = (255, 200, 0)
+        pygame.draw.rect(surface, food_color,
+                        (self.food[0] * self.tile_size + 2, self.food[1] * self.tile_size + 2,
+                         self.tile_size - 4, self.tile_size - 4))
+        
+        snake_color = (100, 255, 100)
+        head_color = (150, 255, 150)
+        
+        head = self.snake[0]
+        pygame.draw.rect(surface, head_color,
+                        (head[0] * self.tile_size + 1, head[1] * self.tile_size + 1,
+                         self.tile_size - 2, self.tile_size - 2))
+        
+        for segment in self.snake[1:]:
+            pygame.draw.rect(surface, snake_color,
+                           (segment[0] * self.tile_size + 1, segment[1] * self.tile_size + 1,
+                            self.tile_size - 2, self.tile_size - 2))
+
 
 class Button:
     def __init__(self, x, y, width, height, text_id, color, hover_color):
@@ -111,12 +222,11 @@ def main():
 
     current_lang: dict[str] = LANG_PL
 
-    # Colors
+    # Kolorki
     BG_COLOR = (12, 12, 30)
     BUTTON_COLOR = (60, 100, 60)
     BUTTON_HOVER_COLOR = (100, 160, 100)
 
-    # Buttons
     button_w, button_h = 300, 60
     bx = (WIDTH - button_w) // 2
 
@@ -130,7 +240,7 @@ def main():
     settings_exit_button = Button(bx, HEIGHT // 2 + 200, button_w, button_h, "exit", BUTTON_COLOR, BUTTON_HOVER_COLOR)
     settings_buttons = [quality_button, language_button, settings_exit_button]
 
-    # MENU JAKOŚCI — tylko Niska / Wysoka / Wyjście
+    # MENU JAKOŚCI
     quality_low = Button(bx, HEIGHT // 2, button_w, button_h, "low", BUTTON_COLOR, BUTTON_HOVER_COLOR)
     quality_high = Button(bx, HEIGHT // 2 + 100, button_w, button_h, "high", BUTTON_COLOR, BUTTON_HOVER_COLOR)
     quality_exit = Button(bx, HEIGHT // 2 + 200, button_w, button_h, "exit", BUTTON_COLOR, BUTTON_HOVER_COLOR)
@@ -158,7 +268,6 @@ def main():
     while running and not started:
         mouse = pygame.mouse.get_pos()
 
-        # HOVER UPDATE
         if current_screen == "main":
             for b in main_buttons: b.update(mouse)
         elif current_screen == "settings":
@@ -168,7 +277,6 @@ def main():
         elif current_screen == "language":
             for b in language_buttons: b.update(mouse)
 
-        # EVENTS
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -206,7 +314,6 @@ def main():
                     elif lang_exit_btn.is_clicked(event):
                         current_screen = "settings"
 
-        # DRAW
         if background:
             screen.blit(background, (0, 0))
         else:
@@ -243,6 +350,31 @@ def main():
         pygame.display.flip()
         clock.tick(60)
 
+    # GAME LOOP
+    if started and running:
+        game = SnakeGame(WIDTH, HEIGHT)
+        game_over = False
+        
+        while running and not game_over:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+                    else:
+                        game.handle_input(event)
+            
+            game_over = game.update()
+            game.draw(screen)
+            
+            score_font = pygame.font.SysFont("arial", 36)
+            score_surf = score_font.render(f"Score: {game.score}", True, (240, 240, 240))
+            screen.blit(score_surf, (20, 20))
+            
+            pygame.display.flip()
+            clock.tick(60)
+
     pygame.quit()
     sys.exit()
 
@@ -251,7 +383,7 @@ def main():
 def get_scale_from_quality(q):
     if q == "low":
         return 0.4
-    return 1.0  # high = pełna jakość
+    return 1.0  # high = pełna jakość, low = lekko rozmazane
 
 
 _original_flip = pygame.display.flip
